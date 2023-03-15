@@ -1,0 +1,4 @@
+comunica-sparql-link-traversal \
+    "SELECT distinct ?person where {
+   <https://solid.interactions.ics.unisg.ch/LukaBiceps/profile/card#me> (foaf:knows)+ ?person.
+    } "

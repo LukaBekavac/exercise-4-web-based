@@ -1,0 +1,4 @@
+comunica-sparql https://solid.interactions.ics.unisg.ch/LukaBiceps/profile/card#me  \
+    "SELECT ?person where {
+    ?personA foaf:knows ?person.
+   }"
