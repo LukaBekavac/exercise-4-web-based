@@ -2,3 +2,6 @@ comunica-sparql https://solid.interactions.ics.unisg.ch/LukaBiceps/profile/card#
     "SELECT ?person where {
     ?personA foaf:knows ?person.
    }"
+
+// In this query, the PREFIX keyword defines a prefix for the foaf namespace. The SELECT keyword specifies the variables that should be returned in the query result. In this case, the variable is ?person. The WHERE clause specifies the conditions that the data must meet in order to be returned in the query result. In this case, we are looking for individuals (?person) who are known by someone (?personA) through the foaf:knows relationship.
+

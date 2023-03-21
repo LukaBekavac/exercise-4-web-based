@@ -4,6 +4,15 @@ import cartago.Artifact;
 import cartago.OPERATION;
 import cartago.OpFeedbackParam;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.StringJoiner;
+
 /**
  * A CArtAgO artifact that agent can use to interact with LDP containers in a Solid pod.
  */
@@ -28,23 +37,94 @@ public class Pod extends Artifact {
    * 
    */
     @OPERATION
-    public void createContainer(String containerName) {
-        log("1. Implement the method createContainer()");
-    }
+    public void createContainer(String containerName) throws IOException, InterruptedException {
 
-  /**
-   * CArtAgO operation for publishing data within a .txt file in a Linked Data Platform container of the Solid pod
-   * 
-   * @param containerName The name of the container where the .txt file resource will be created
-   * @param fileName The name of the .txt file resource to be created in the container
-   * @param data An array of Object data that will be stored in the .txt file
-   */
+        /**
+         * CArtAgO operation for publishing data within a .txt file in a Linked Data Platform container of the Solid pod
+         *
+         * @param containerName The name of the container where the .txt file resource will be created
+         * @param fileName The name of the .txt file resource to be created in the container
+         * @param data An array of Object data that will be stored in the .txt file
+         */
+
+        String body = "@prefix ldp: <http://www.w3.org/ns/ldp#>.\n"+
+                "@prefix dcterms: <http://purl.org/dc/terms/>.\n" +
+                "<> a ldp:Container, ldp:BasicContainer, ldp:Resource;\n" +
+                "dcterms:title \"" + containerName + "\";\n" +
+                "dcterms:description \"Container for personal data\".";
+        HttpRequest createContainer = HttpRequest.newBuilder(URI.create("https://solid.interactions.ics.unisg.ch/LukaBiceps/"))
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .header("Content-Type", "text/turtle")
+                .header("Link", "<http://www.w3.org/ns/ldp#BasicContainer>; rel=\"type\"")
+                .header("Slug", containerName + "/").build();
+
+        HttpClient httpClient = HttpClient.newHttpClient();
+        try {
+            HttpResponse<String> response = httpClient.send(createContainer, HttpResponse.BodyHandlers.ofString());
+            if(response.statusCode() == 201) {
+                log("Container created.");
+            } else {
+                log("There is a problem, response status: " + response.body());
+            }
+        } catch (IOException | InterruptedException  e) {
+            e.printStackTrace();
+        }
+
+
+
+
+    }
     @OPERATION
-    public void publishData(String containerName, String fileName, Object[] data) {
-        log("2. Implement the method publishData()");
+    public void publishData(String containerName, String fileName, Object[] data) throws IOException, InterruptedException {
+        
+
+        final var stringInput = createStringFromArray(data);
+        final var publishdata = URI.create(("https://solid.interactions.ics.unisg.ch/LukaBiceps/" + containerName +"/" + fileName ));
+        final var httpClient = HttpClient.newHttpClient();
+        try {
+            if (checkResourceAlreadyExists(publishdata)) {
+                final var request = HttpRequest.newBuilder()
+                        .uri(publishdata)
+                        .header("Content-Type", "text/plain")
+                        .PUT(HttpRequest.BodyPublishers.ofString(stringInput))
+                        .build();
+                final var httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+
+            } else {
+                final var containerUri = URI.create(("https://solid.interactions.ics.unisg.ch/LukaBiceps/" + containerName + "/"));
+                final var request = HttpRequest.newBuilder(containerUri)
+                        .header("Slug", fileName)
+                        .POST(HttpRequest.BodyPublishers.ofString(stringInput))
+                        .header("Content-Type", "text/plain")
+                        .build();
+                final var httpResponse = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+
+
+            }
+        } catch (IOException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 
-  /**
+    private boolean checkResourceAlreadyExists(URI publishdata) {
+        final var httpClient = HttpClient.newHttpClient();
+        final var httpRequest = HttpRequest.newBuilder()
+                .uri(publishdata)
+                .GET()
+                .build();
+        try {
+            final var response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.discarding());
+            return response.statusCode() == 200;
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+
+
+    /**
    * CArtAgO operation for reading data of a .txt file in a Linked Data Platform container of the Solid pod
    * 
    * @param containerName The name of the container where the .txt file resource is located
@@ -52,7 +132,7 @@ public class Pod extends Artifact {
    * @param data An array whose elements are the data read from the .txt file
    */
     @OPERATION
-    public void readData(String containerName, String fileName, OpFeedbackParam<Object[]> data) {
+    public void readData(String containerName, String fileName, OpFeedbackParam<Object[]> data) throws IOException, InterruptedException {
         data.set(readData(containerName, fileName));
     }
 
@@ -63,24 +143,24 @@ public class Pod extends Artifact {
    * @param fileName The name of the .txt file resource that holds the data to be read
    * @return An array whose elements are the data read from the .txt file
    */
+
+
     public Object[] readData(String containerName, String fileName) {
-        log("3. Implement the method readData(). Currently, the method returns mock data");
 
-        // Remove the following mock responses once you have implemented the method
-        switch(fileName) {
-            case "watchlist.txt":
-                Object[] mockWatchlist = new Object[]{"The Matrix", "Inception", "Avengers: Endgame"};
-                return mockWatchlist;
-            case "sleep.txt":
-                Object[] mockSleepData = new Object[]{"6", "7", "5"};
-                return mockSleepData;
-            case "trail.txt":
-                Object[] mockTrailData = new Object[]{"3", "5.5", "5.5"};
-                return mockTrailData; 
-            default:
-                return new Object[0];
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest getRequest = HttpRequest.newBuilder()
+                .uri(URI.create("https://solid.interactions.ics.unisg.ch/LukaBiceps/" + containerName + "/" + fileName))
+                .GET()
+                .build();
+
+        try {
+            HttpResponse<String> response = client.send(getRequest, HttpResponse.BodyHandlers.ofString());
+            // log(response.body());
+            return response.body().split("\n");
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
         }
-
+        return new Object [0];
     }
 
   /**
@@ -119,7 +199,7 @@ public class Pod extends Artifact {
    * @param data An array whose elements are the new data to be added in the .txt file
    */
     @OPERATION
-    public void updateData(String containerName, String fileName, Object[] data) {
+    public void updateData(String containerName, String fileName, Object[] data) throws IOException, InterruptedException {
         Object[] oldData = readData(containerName, fileName);
         Object[] allData = new Object[oldData.length + data.length];
         System.arraycopy(oldData, 0, allData, 0, oldData.length);

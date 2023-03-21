@@ -2,3 +2,5 @@ comunica-sparql-link-traversal \
     "SELECT distinct ?person where {
    <https://solid.interactions.ics.unisg.ch/LukaBiceps/profile/card#me> (foaf:knows)+ ?person.
     } "
+
+// The WHERE  Clause and SELECT Clause function the same way as stated in the last query. The + symbol after (foaf:knows) indicates that we want to traverse the link recursively, meaning that we want to retrieve all the people that are connected to the person with the URI through the foaf:knows property, including those that are indirectly connected. The distinct keyword ensures that we only retrieve unique values for ?person and not multiple times the same person.
